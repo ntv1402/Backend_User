@@ -1,13 +1,29 @@
 package com.training.backend.service;
 
+import com.training.backend.dto.UserDTO;
 import com.training.backend.entity.User;
+import com.training.backend.payload.request.FormRequest;
+import com.training.backend.payload.request.UserRequest;
+import com.training.backend.payload.response.UserDetailResponse;
 import org.apache.coyote.Response;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.Optional;
 
+
 public interface UserService {
-    Optional<User> findByUsername(String username);
-    ResponseEntity<User> findById(int id);
+
+    List<UserDTO> listUsers(UserRequest userRequest);
+
+//    Long addUser(FormRequest addRequest);
+//
+//    UserDetailResponse getUserById (Long Id) throws Exception;
+//
+//    Long deleteUser(Long Id);
+//
+//    Long updateUser(FormRequest updateRequest);
+//
+//    Long countUsers(UserRequest userRequest);
 }
