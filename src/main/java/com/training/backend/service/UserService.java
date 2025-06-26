@@ -25,5 +25,5 @@ public interface UserService {
 //
 //    Long updateUser(FormRequest updateRequest);
 //
-//    Long countUsers(UserRequest userRequest);
+    Long countUsers(UserRequest userRequest);
 }

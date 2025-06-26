@@ -26,7 +26,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = """
     SELECT
-        u.user_id AS id,
+        u.user_id AS userId,
         u.fullname AS fullname,
         u.birthdate AS birthdate,
         d.department_name AS departmentName,
@@ -74,7 +74,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = """
     SELECT
-        u.user_id AS id,
+        u.user_id AS userId,
         u.fullname AS fullname,
         u.birthdate AS birthdate,
         d.department_name AS departmentName,

@@ -12,11 +12,11 @@ import java.util.List;
 
 @Repository
 public interface UserCertiRepository extends JpaRepository<UserCerti,Long> {
-    @Query("SELECT uc FROM UserCerti uc WHERE uc.user_id = :Id")
-    List<UserCerti> findByEmployeeId(@Param("Id") Long Id);
+    @Query("SELECT uc FROM UserCerti uc WHERE uc.userId = :userId")
+    List<UserCerti> findByUserId(@Param("userId") Long userId);
 
     @Modifying
     @Transactional
-    @Query("DELETE FROM UserCerti uc WHERE uc.user_id = :Id")
-    void deleteByEmployeeId(@Param("Id") Long Id);
+    @Query("DELETE FROM UserCerti uc WHERE uc.userId = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }
