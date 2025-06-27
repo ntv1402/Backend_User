@@ -14,7 +14,7 @@ public class Constants {
     public static final boolean IS_CROSS_ALLOW = true;
 
     public static final String JWT_SECRET = "Luvina-Academe";
-    public static final long JWT_EXPIRATION = 160 * 60 * 60; // 7 day
+    public static final long JWT_EXPIRATION = 300;
 
     // config endpoints public
     public static final String[] ENDPOINTS_PUBLIC = new String[] {
