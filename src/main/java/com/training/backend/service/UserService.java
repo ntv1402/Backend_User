@@ -17,13 +17,13 @@ public interface UserService {
 
     List<UserDTO> listUsers(UserRequest userRequest);
 
-//    Long addUser(FormRequest addRequest);
-//
-//    UserDetailResponse getUserById (Long Id) throws Exception;
-//
-//    Long deleteUser(Long Id);
-//
-//    Long updateUser(FormRequest updateRequest);
-//
+    Long addUser(FormRequest addRequest);
+
+    UserDetailResponse getUserById (Long Id) throws Exception;
+
+    Long deleteUser(Long Id);
+
+    Long updateUser(FormRequest updateRequest);
+
     Long countUsers(UserRequest userRequest);
 }

@@ -104,4 +104,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("fullname") String fullname,
             @Param("departmentId") String departmentId
     );
+
 }

@@ -19,4 +19,6 @@ public class LoginResponse {
     public LoginResponse(Map<String, String> errors) {
         this.errors = errors;
     }
+
+
 }

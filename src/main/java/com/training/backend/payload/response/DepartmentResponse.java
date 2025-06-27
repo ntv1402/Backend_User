@@ -1,19 +1,18 @@
 package com.training.backend.payload.response;
 
-import com.training.backend.dto.UserDTO;
+import com.training.backend.dto.DepartmentDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class ListResponse {
+@NoArgsConstructor
+public class DepartmentResponse {
 
     private String code;
-
-    private Long totalRecords;
-
-    private List<UserDTO> userList;
+    private List<DepartmentDTO> departments;
 
 }

@@ -3,18 +3,23 @@ package com.training.backend.service.impl;
 import com.training.backend.dto.UserDTO;
 import com.training.backend.dto.UserProjection;
 import com.training.backend.entity.UserCerti;
+import com.training.backend.payload.request.FormRequest;
 import com.training.backend.payload.request.UserRequest;
 import com.training.backend.repository.CertificationRepository;
 import com.training.backend.repository.DepartmentRepository;
 import com.training.backend.repository.UserCertiRepository;
 import com.training.backend.repository.UserRepository;
 import com.training.backend.service.UserService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -82,6 +87,16 @@ public class UserServiceImpl implements UserService {
         );
         return totalRecords;
     }
+
+    @Transactional
+    @Override
+    public Long addUser(FormRequest addRequest) {
+        try {
+
+        }
+        return "a";
+    }
+
 
 
 
