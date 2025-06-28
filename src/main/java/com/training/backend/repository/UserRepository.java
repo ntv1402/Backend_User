@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailAndIdNot(String username, Long id);
 
     @Override
-    Optional<User> findById(Long aLong);
+    Optional<User> findById(Long userId);
 
     @Query(value = """
     SELECT
