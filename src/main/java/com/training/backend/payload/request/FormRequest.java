@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class FormRequest {
+    private Long userId;
     private String fullname;
     private String birthDate;
     private String email;
@@ -19,5 +20,6 @@ public class FormRequest {
     private String katakana;
     private String username;
     private String password;
-    private List<Certification> certifications;
+    private Long departmentId;
+    private List<CertificationRequest> certifications;
 }
