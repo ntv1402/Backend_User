@@ -18,6 +18,7 @@ import com.training.backend.repository.DepartmentRepository;
 import com.training.backend.repository.UserCertiRepository;
 import com.training.backend.repository.UserRepository;
 import com.training.backend.service.UserService;
+import com.training.backend.utils.DateUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
@@ -57,39 +58,18 @@ public class UserServiceImpl implements UserService {
      * Helper method để set dữ liệu cho UserCerti
      */
     private UserCerti setUserCertiData(User user, CertificationRequest certRequest) {
-        UserCerti userCerti = new UserCerti();
-        userCerti.setUser(user);
-        
         // Tìm certification từ database
         Certification certification = certificationRepository.findById(certRequest.getCertificationId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy Certification"));
-        userCerti.setCertification(certification);
         
-        // Set start date
-        if (certRequest.getCertificationStartDate() != null && !certRequest.getCertificationStartDate().isEmpty()) {
-            userCerti.setStartDate(parseDate(certRequest.getCertificationStartDate()));
-        }
-        
-        // Set end date
-        if (certRequest.getCertificationEndDate() != null && !certRequest.getCertificationEndDate().isEmpty()) {
-            userCerti.setEndDate(parseDate(certRequest.getCertificationEndDate()));
-        }
-        
-        // Set score
-        userCerti.setScore(certRequest.getUserCertificationScore());
-        
-        return userCerti;
-    }
-
-    /**
-     * Helper method để parse ngày tháng từ string sang LocalDate
-     */
-    private LocalDate parseDate(String dateString) {
-        if (dateString == null || dateString.isEmpty()) {
-            return null;
-        }
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT);
-        return LocalDate.parse(dateString, formatter);
+        // Sử dụng Builder pattern để tạo UserCerti
+        return UserCerti.builder()
+                .user(user)
+                .certification(certification)
+                .startDate(DateUtils.parseDate(certRequest.getCertificationStartDate()))
+                .endDate(DateUtils.parseDate(certRequest.getCertificationEndDate()))
+                .score(certRequest.getUserCertificationScore())
+                .build();
     }
 
     /**
@@ -97,7 +77,7 @@ public class UserServiceImpl implements UserService {
      */
     private void setUserData(User user, FormRequest request) {
         user.setFullname(request.getFullname());
-        user.setBirthdate(parseDate(request.getBirthDate()));
+        user.setBirthdate(DateUtils.parseDate(request.getBirthDate()));
         user.setEmail(request.getEmail());
         user.setTelephone(request.getTelephone());
         user.setKatakana(request.getKatakana());
@@ -111,35 +91,6 @@ public class UserServiceImpl implements UserService {
     private void setUserPassword(User user, String password) {
         if (password != null && !password.isEmpty()) {
             user.setPassword(passwordEncoder.encode(password));
-        }
-    }
-
-    /**
-     * Helper method để xử lý certifications từ request
-     */
-    private void processCertifications(User user, List<CertificationRequest> certifications) {
-        if (certifications != null && !certifications.isEmpty()) {
-            for (CertificationRequest certRequest : certifications) {
-                UserCerti userCerti = setUserCertiData(user, certRequest);
-                userCertiRepository.save(userCerti);
-            }
-        }
-    }
-
-    /**
-     * Helper method để xử lý certifications khi update (xóa cũ, thêm mới)
-     */
-    private void processCertificationsForUpdate(User user, List<CertificationRequest> certifications) {
-        if (certifications != null && !certifications.isEmpty()) {
-            // Xóa certifications cũ
-            userCertiRepository.deleteByUserId(user.getUserId());
-            
-            // Thêm certifications mới
-            List<UserCerti> userCertis = certifications.stream()
-                    .map(certRequest -> setUserCertiData(user, certRequest))
-                    .collect(Collectors.toList());
-            
-            userCertiRepository.saveAll(userCertis);
         }
     }
 
@@ -229,7 +180,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public Long addUser(FormRequest addRequest) {
         try {
-            LocalDate birthDate = parseDate(addRequest.getBirthDate());
+            LocalDate birthDate = DateUtils.parseDate(addRequest.getBirthDate());
 
             User user = new User();
 
@@ -238,9 +189,13 @@ public class UserServiceImpl implements UserService {
 
             User savedUser = userRepository.save(user);
 
+            // Xử lý certifications
             if (addRequest.getCertifications() != null) {
                 List<CertificationRequest> certificationRequests = addRequest.getCertifications();
-                processCertifications(savedUser, certificationRequests);
+                for (CertificationRequest certRequest : certificationRequests) {
+                    UserCerti userCerti = setUserCertiData(savedUser, certRequest);
+                    userCertiRepository.save(userCerti);
+                }
             }
             return savedUser.getUserId();
         } catch (Exception e) {
@@ -292,8 +247,17 @@ public class UserServiceImpl implements UserService {
 
         final User savedUser = userRepository.save(user);
 
+        // Xử lý certifications khi update (xóa cũ, thêm mới)
         if (updateRequest.getCertifications() != null && !updateRequest.getCertifications().isEmpty()) {
-            processCertificationsForUpdate(savedUser, updateRequest.getCertifications());
+            // Xóa certifications cũ
+            userCertiRepository.deleteByUserId(savedUser.getUserId());
+            
+            // Thêm certifications mới
+            List<UserCerti> userCertis = updateRequest.getCertifications().stream()
+                    .map(certRequest -> setUserCertiData(savedUser, certRequest))
+                    .collect(Collectors.toList());
+            
+            userCertiRepository.saveAll(userCertis);
         }
         return savedUser.getUserId();
     }
