@@ -17,6 +17,7 @@ import com.training.backend.repository.CertificationRepository;
 import com.training.backend.repository.DepartmentRepository;
 import com.training.backend.repository.UserCertiRepository;
 import com.training.backend.repository.UserRepository;
+import com.training.backend.repository.UserRepositoryImpl;
 import com.training.backend.service.UserService;
 import com.training.backend.utils.DateUtils;
 import jakarta.transaction.Transactional;
@@ -53,6 +54,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserRepositoryImpl userRepositoryImpl;
 
     /**
      * Helper method để set dữ liệu cho UserCerti
@@ -144,7 +148,7 @@ public class UserServiceImpl implements UserService {
      * Helper method để lấy projections từ repository
      */
     private List<UserProjection> getProjections(UserRequest userRequest) {
-        return userRepository.searchUsers(
+        return userRepositoryImpl.searchUsersWithCriteria(
                 userRequest.getFullname(),
                 userRequest.getDepartmentId(),
                 userRequest.getOrdFullname(),
@@ -167,13 +171,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Long countUsers(UserRequest userRequest) {
-        List<UserProjection> projections = getProjections(userRequest);
-
-        long totalRecords = userRepository.countUsers(
+        return userRepositoryImpl.countUsersWithCriteria(
                 userRequest.getFullname(),
                 userRequest.getDepartmentId()
         );
-        return totalRecords;
     }
 
     @Transactional
