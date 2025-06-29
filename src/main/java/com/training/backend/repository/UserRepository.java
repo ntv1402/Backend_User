@@ -11,19 +11,70 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository interface cho User entity
+ * Cung cấp các phương thức truy vấn cơ bản và tìm kiếm nâng cao
+ * Sử dụng SQL queries truyền thống thay vì Criteria Builder
+ */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+    
+    /**
+     * Tìm user theo username
+     * 
+     * @param username Tên đăng nhập cần tìm
+     * @return Optional chứa User nếu tìm thấy, empty nếu không tìm thấy
+     */
     Optional<User> findByUsername(String username);
 
+    /**
+     * Kiểm tra xem username đã tồn tại trong hệ thống chưa
+     * 
+     * @param username Tên đăng nhập cần kiểm tra
+     * @return true nếu username đã tồn tại, false nếu chưa
+     */
     boolean existsByUsername(String username);
 
+    /**
+     * Kiểm tra xem email đã tồn tại trong hệ thống chưa
+     * 
+     * @param email Email cần kiểm tra
+     * @return true nếu email đã tồn tại, false nếu chưa
+     */
     boolean existsByEmail(String email);
 
+    /**
+     * Kiểm tra xem email đã tồn tại bởi user khác chưa (dùng cho update)
+     * 
+     * @param username Email cần kiểm tra
+     * @param userId ID của user hiện tại (để loại trừ)
+     * @return true nếu email đã được sử dụng bởi user khác, false nếu chưa
+     */
     boolean existsByEmailAndUserIdNot(String username, Long userId);
 
+    /**
+     * Tìm user theo ID
+     * Override method từ JpaRepository
+     * 
+     * @param userId ID của user cần tìm
+     * @return Optional chứa User nếu tìm thấy, empty nếu không tìm thấy
+     */
     @Override
     Optional<User> findById(Long userId);
 
+    /**
+     * Tìm kiếm danh sách users với các điều kiện lọc và sắp xếp
+     * Sử dụng SQL query phức tạp với JOIN và subquery
+     * 
+     * @param fullname Tên đầy đủ để tìm kiếm (có thể null hoặc empty)
+     * @param departmentId ID department để lọc (có thể null hoặc empty)
+     * @param ordFullname Thứ tự sắp xếp theo tên (ASC/DESC/null)
+     * @param ordCertificationName Thứ tự sắp xếp theo tên certification (ASC/DESC/null)
+     * @param ordEndDate Thứ tự sắp xếp theo ngày kết thúc (ASC/DESC/null)
+     * @param offset Vị trí bắt đầu cho pagination
+     * @param limit Số lượng records tối đa trả về
+     * @return Danh sách UserProjection chứa thông tin users và certifications
+     */
     @Query(value = """
             SELECT
                 u.user_id AS userId,
@@ -72,6 +123,14 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
             @Param("limit") Integer limit
     );
 
+    /**
+     * Đếm tổng số lượng users thỏa mãn điều kiện lọc
+     * Sử dụng SQL query tương tự searchUsers nhưng chỉ đếm số lượng
+     * 
+     * @param fullname Tên đầy đủ để tìm kiếm (có thể null hoặc empty)
+     * @param departmentId ID department để lọc (có thể null hoặc empty)
+     * @return Tổng số lượng users thỏa mãn điều kiện
+     */
     @Query(value = """
             SELECT COUNT(DISTINCT u.user_id)
             FROM users u
