@@ -20,8 +20,8 @@ public class UserRequest {
 
     private String ordEndDate;
 
-    private String offset;
+    private Integer offset;
 
-    private String limit;
+    private Integer limit;
 
 }

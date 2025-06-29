@@ -9,6 +9,7 @@ import com.training.backend.payload.response.SuccessResponse;
 import com.training.backend.payload.response.UserDetailResponse;
 import com.training.backend.service.impl.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ import java.util.List;
 import static com.training.backend.config.MessageConstant.*;
 
 @RestController
-@RequestMapping("/employee")
+@RequestMapping("/user")
 public class UserController {
 
     @Autowired
@@ -32,9 +33,15 @@ public class UserController {
             @RequestParam(value = "ordFullname", required = false) String ordFullname,
             @RequestParam(value = "ordCertificationName", required = false) String ordCertificationName,
             @RequestParam(value = "ordEndDate", required = false) String ordEndDate,
-            @RequestParam(value = "offset", required = false) String offset,
-            @RequestParam(value = "limit", required = false) String limit) {
+            @RequestParam(value = "offset", required = false) Integer offset,
+            @RequestParam(value = "limit", required = false) Integer limit) {
 
+        if (limit == null) {
+            limit = 5;
+        }
+        if (offset == null) {
+            offset = 0;
+        }
         UserRequest userRequest = new UserRequest();
         userRequest.setFullname(fullname);
         userRequest.setDepartmentId(departmentId);
@@ -56,9 +63,16 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<?> addUser(@RequestBody FormRequest addRequest) {
-        //Validate ở đây
+        // Validate ở đây
 
         Long newUserId = userService.addUser(addRequest);
+
+        if (newUserId == null) {
+            // Trả về lỗi cho Frontend
+            ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
+            errorResponse.addMessage(ER015_CODE, Collections.emptyList());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
 
         SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, newUserId);
         successResponse.addMessage(MSG001_CODE, Collections.emptyList());
@@ -71,6 +85,7 @@ public class UserController {
             UserDetailResponse response = userService.getUserById(userId);
             return ResponseEntity.ok().body(response);
         } catch (Exception e) {
+            e.printStackTrace();
             ErrorResponse errorResponse = new ErrorResponse("500");
             errorResponse.addMessage(ER015_CODE, Collections.emptyList());
             return ResponseEntity.badRequest().body(errorResponse);
@@ -80,21 +95,15 @@ public class UserController {
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> deleteUserById(@PathVariable Long userId) {
         try {
-            // Kiểm tra employee có tồn tại không
-            if (!employeeValidator.isEmployeeExists(employeeId)) {
-                ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-                errorResponse.addMessage(ER013_CODE, Collections.singletonList(FIELD_EMPLOYEE_ID));
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
 
-            Long deletedEmployeeId = employeeService.deleteEmployee(employeeId);
-            if (deletedEmployeeId != null) {
+            Long deletedUserId = userService.deleteUser(userId);
+            if (deletedUserId != null) {
                 // Tạo response thành công với mã MSG003
-                SuccessResponse response = new SuccessResponse(API_SUCCESS, deletedEmployeeId);
+                SuccessResponse response = new SuccessResponse(API_SUCCESS, deletedUserId);
                 response.addMessage(MSG003_CODE, Collections.emptyList());
                 return ResponseEntity.ok(response);
             } else {
-                // Tạo response lỗi với mã ER014 (không tìm thấy)
+                // Tạo response lỗi với mã ER013 (không tìm thấy)
                 ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
                 errorResponse.addMessage(ER013_CODE, Collections.singletonList(FIELD_EMPLOYEE_ID));
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
@@ -109,12 +118,12 @@ public class UserController {
 
     @PutMapping
     public ResponseEntity<?> updateEmployee(@RequestBody FormRequest updateRequest) {
-    
+        
         // Nếu tất cả validation đều pass, tiến hành cập nhật nhân viên
-        Long updateEmployeeId = employeeService.updateEmployee(updateRequest);
+        Long updateUserId = userService.updateUser(updateRequest);
 
         // Tạo response thành công với mã MSG002
-        SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, updateEmployeeId);
+        SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, updateUserId);
         successResponse.addMessage(MSG002_CODE, Collections.emptyList());
         return ResponseEntity.ok(successResponse);
     }

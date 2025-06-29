@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    boolean existsByEmailAndIdNot(String username, Long id);
+    boolean existsByEmailAndUserIdNot(String username, Long userId);
 
     @Override
     Optional<User> findById(Long userId);
@@ -39,10 +39,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     JOIN departments d ON u.department_id = d.department_id
     LEFT JOIN (
         SELECT uc1.*
-        FROM users_certifications uc1
+        FROM user_certification uc1
         JOIN (
             SELECT user_id, MIN(c.certification_level) AS min_level
-            FROM users_certifications uc
+            FROM user_certification uc
             JOIN certifications c ON uc.certification_id = c.certification_id
             GROUP BY user_id
         ) uc_min ON uc1.user_id = uc_min.user_id
@@ -68,29 +68,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("ordFullname") String ordFullname,
             @Param("ordCertificationName") String ordCertificationName,
             @Param("ordEndDate") String ordEndDate,
-            @Param("offset") String offset,
-            @Param("limit") String limit
+            @Param("offset") Integer offset,
+            @Param("limit") Integer limit
     );
 
     @Query(value = """
-    SELECT
-        u.user_id AS userId,
-        u.fullname AS fullname,
-        u.birthdate AS birthdate,
-        d.department_name AS departmentName,
-        u.email AS email,
-        u.telephone AS telephone,
-        c.certification_name AS certificationName,
-        uc.end_date AS endDate,
-        uc.score AS score
+    SELECT COUNT(DISTINCT u.user_id)
     FROM users u
     JOIN departments d ON u.department_id = d.department_id
     LEFT JOIN (
         SELECT uc1.*
-        FROM users_certifications uc1
+        FROM user_certification uc1
         JOIN (
             SELECT user_id, MIN(c.certification_level) AS min_level
-            FROM users_certifications uc
+            FROM user_certification uc
             JOIN certifications c ON uc.certification_id = c.certification_id
             GROUP BY user_id
         ) uc_min ON uc1.user_id = uc_min.user_id

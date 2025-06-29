@@ -18,7 +18,7 @@ public class UserCerti {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private User userId;
+    private User user;
 
     @ManyToOne
     @JoinColumn(name = "certification_id", nullable = false)

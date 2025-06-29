@@ -53,9 +53,147 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Override
-    public List<UserDTO> listUsers(UserRequest userRequest) {
-        List<UserProjection> projections = userRepository.searchUsers(
+    /**
+     * Helper method để set dữ liệu cho UserCerti
+     */
+    private UserCerti setUserCertiData(User user, CertificationRequest certRequest) {
+        UserCerti userCerti = new UserCerti();
+        userCerti.setUser(user);
+        
+        // Tìm certification từ database
+        Certification certification = certificationRepository.findById(certRequest.getCertificationId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy Certification"));
+        userCerti.setCertification(certification);
+        
+        // Set start date
+        if (certRequest.getCertificationStartDate() != null && !certRequest.getCertificationStartDate().isEmpty()) {
+            userCerti.setStartDate(parseDate(certRequest.getCertificationStartDate()));
+        }
+        
+        // Set end date
+        if (certRequest.getCertificationEndDate() != null && !certRequest.getCertificationEndDate().isEmpty()) {
+            userCerti.setEndDate(parseDate(certRequest.getCertificationEndDate()));
+        }
+        
+        // Set score
+        userCerti.setScore(certRequest.getUserCertificationScore());
+        
+        return userCerti;
+    }
+
+    /**
+     * Helper method để parse ngày tháng từ string sang LocalDate
+     */
+    private LocalDate parseDate(String dateString) {
+        if (dateString == null || dateString.isEmpty()) {
+            return null;
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT);
+        return LocalDate.parse(dateString, formatter);
+    }
+
+    /**
+     * Helper method để set dữ liệu cho User từ FormRequest
+     */
+    private void setUserData(User user, FormRequest request) {
+        user.setFullname(request.getFullname());
+        user.setBirthdate(parseDate(request.getBirthDate()));
+        user.setEmail(request.getEmail());
+        user.setTelephone(request.getTelephone());
+        user.setKatakana(request.getKatakana());
+        user.setUsername(request.getUsername());
+        user.setDepartmentId(request.getDepartmentId());
+    }
+
+    /**
+     * Helper method để set password cho User (nếu có)
+     */
+    private void setUserPassword(User user, String password) {
+        if (password != null && !password.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(password));
+        }
+    }
+
+    /**
+     * Helper method để xử lý certifications từ request
+     */
+    private void processCertifications(User user, List<CertificationRequest> certifications) {
+        if (certifications != null && !certifications.isEmpty()) {
+            for (CertificationRequest certRequest : certifications) {
+                UserCerti userCerti = setUserCertiData(user, certRequest);
+                userCertiRepository.save(userCerti);
+            }
+        }
+    }
+
+    /**
+     * Helper method để xử lý certifications khi update (xóa cũ, thêm mới)
+     */
+    private void processCertificationsForUpdate(User user, List<CertificationRequest> certifications) {
+        if (certifications != null && !certifications.isEmpty()) {
+            // Xóa certifications cũ
+            userCertiRepository.deleteByUserId(user.getUserId());
+            
+            // Thêm certifications mới
+            List<UserCerti> userCertis = certifications.stream()
+                    .map(certRequest -> setUserCertiData(user, certRequest))
+                    .collect(Collectors.toList());
+            
+            userCertiRepository.saveAll(userCertis);
+        }
+    }
+
+    /**
+     * Helper method để map từ UserProjection sang UserDTO
+     */
+    private UserDTO mapProjectionToDTO(UserProjection proj) {
+        UserDTO userDTO = new UserDTO();
+        userDTO.setUserId(proj.getUserId());
+        userDTO.setFullname(proj.getFullname());
+        userDTO.setDepartmentName(proj.getDepartmentName());
+        userDTO.setBirthdate(proj.getBirthDate());
+        userDTO.setEmail(proj.getEmail());
+        userDTO.setTelephone(proj.getTelephone());
+        userDTO.setCertificationName(proj.getCertificationName());
+        userDTO.setEndDate(proj.getEndDate());
+        userDTO.setScore(proj.getScore());
+        return userDTO;
+    }
+
+    /**
+     * Helper method để map từ UserCerti sang CertificationDetail
+     */
+    private UserDetailResponse.CertificationDetail mapUserCertiToDetail(UserCerti userCerti) {
+        UserDetailResponse.CertificationDetail certificationDetail = new UserDetailResponse.CertificationDetail();
+        certificationDetail.setCertificationId(userCerti.getCertification().getCertificationId());
+        certificationDetail.setCertificationName(userCerti.getCertification().getCertificationName());
+        certificationDetail.setStartDate(userCerti.getStartDate());
+        certificationDetail.setEndDate(userCerti.getEndDate());
+        certificationDetail.setScore(userCerti.getScore());
+        return certificationDetail;
+    }
+
+    /**
+     * Helper method để set dữ liệu cho UserDetailResponse từ User và Department
+     */
+    private void setUserDetailResponseData(UserDetailResponse response, User user, Department department) {
+        response.setCode(200L);
+        response.setUserId(user.getUserId());
+        response.setFullName(user.getFullname());
+        response.setKatakana(user.getKatakana());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setBirthDate(user.getBirthdate());
+        response.setTelephone(user.getTelephone());
+        response.setDepartmentId(user.getDepartmentId());
+        response.setDepartmentName(department.getDepartmentName());
+    }
+
+    /**
+     * Helper method để lấy projections từ repository
+     */
+    private List<UserProjection> getProjections(UserRequest userRequest) {
+        return userRepository.searchUsers(
                 userRequest.getFullname(),
                 userRequest.getDepartmentId(),
                 userRequest.getOrdFullname(),
@@ -64,34 +202,21 @@ public class UserServiceImpl implements UserService {
                 userRequest.getOffset(),
                 userRequest.getLimit()
         );
+    }
 
-        List<UserDTO> users = projections.stream().map(proj -> {
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUserId(proj.getUserId());
-            userDTO.setFullname(proj.getFullname());
-            userDTO.setDepartmentName(proj.getDepartmentName());
-            userDTO.setBirthdate(proj.getBirthDate());
-            userDTO.setEmail(proj.getEmail());
-            userDTO.setTelephone(proj.getTelephone());
-            userDTO.setCertificationName(proj.getCertificationName());
-            userDTO.setEndDate(proj.getEndDate());
-            userDTO.setScore(proj.getScore());
-            return userDTO;
-        }).collect(Collectors.toList());
+    @Override
+    public List<UserDTO> listUsers(UserRequest userRequest) {
+        List<UserProjection> projections = getProjections(userRequest);
+
+        List<UserDTO> users = projections.stream()
+                .map(this::mapProjectionToDTO)
+                .collect(Collectors.toList());
         return users;
     }
 
     @Override
     public Long countUsers(UserRequest userRequest) {
-        List<UserProjection> projections = userRepository.searchUsers(
-                userRequest.getFullname(),
-                userRequest.getDepartmentId(),
-                userRequest.getOrdFullname(),
-                userRequest.getOrdCertificationName(),
-                userRequest.getOrdEndDate(),
-                userRequest.getOffset(),
-                userRequest.getLimit()
-        );
+        List<UserProjection> projections = getProjections(userRequest);
 
         long totalRecords = userRepository.countUsers(
                 userRequest.getFullname(),
@@ -104,48 +229,22 @@ public class UserServiceImpl implements UserService {
     @Override
     public Long addUser(FormRequest addRequest) {
         try {
-            LocalDate birthDate = null;
-            if (addRequest.getBirthDate() != null && !addRequest.getBirthDate().isEmpty()) {
-                // FE gửi ngày dạng "yyyy/MM/dd", ví dụ "2025/05/01"
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT);
-                birthDate = LocalDate.parse(addRequest.getBirthDate(), formatter);
-            }
+            LocalDate birthDate = parseDate(addRequest.getBirthDate());
 
             User user = new User();
 
-            user.setFullname(addRequest.getFullname());
-            user.setBirthdate(birthDate);
-            user.setEmail(addRequest.getEmail());
-            user.setTelephone(addRequest.getTelephone());
-            user.setKatakana(addRequest.getKatakana());
-            user.setUsername(addRequest.getUsername());
-            user.setPassword(passwordEncoder.encode(addRequest.getPassword()));
-            user.setDepartmentId(addRequest.getDepartmentId());
+            setUserData(user, addRequest);
+            setUserPassword(user, addRequest.getPassword());
 
             User savedUser = userRepository.save(user);
 
             if (addRequest.getCertifications() != null) {
                 List<CertificationRequest> certificationRequests = addRequest.getCertifications();
-                for (CertificationRequest certRequest : certificationRequests) {
-                    UserCerti userCerti = new UserCerti();
-                    userCerti.setUserId(savedUser);
-                    Certification certification = new Certification();
-                    certification.setCertificationId(certRequest.getCertificationId());
-                    userCerti.setCertification(certification);
-                    if (certRequest.getCertificationStartDate() != null && !certRequest.getCertificationStartDate().isEmpty()) {
-                        userCerti.setStartDate(LocalDate.parse(certRequest.getCertificationStartDate(), DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT)));
-                    }
-                    if (certRequest.getCertificationEndDate() != null && !certRequest.getCertificationEndDate().isEmpty()) {
-                        userCerti.setEndDate(LocalDate.parse(certRequest.getCertificationEndDate(), DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT)));
-                    }
-
-                    userCerti.setScore(certRequest.getUserCertificationScore());
-
-                    userCertiRepository.save(userCerti);
-                }
+                processCertifications(savedUser, certificationRequests);
             }
             return savedUser.getUserId();
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -166,34 +265,18 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserDetailResponse getUserById(Long userId) {
 
-        User user = userRepository.findById(userId).get();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy User"));
 
         UserDetailResponse userDetailResponse = new UserDetailResponse();
-        userDetailResponse.setCode(200L);
-        userDetailResponse.setUserId(userId);
-        userDetailResponse.setFullName(user.getFullname());
-        userDetailResponse.setKatakana(user.getKatakana());
-        userDetailResponse.setUsername(user.getUsername());
-        userDetailResponse.setEmail(user.getEmail());
-        userDetailResponse.setBirthDate(user.getBirthdate());
-        userDetailResponse.setTelephone(user.getTelephone());
-        userDetailResponse.setDepartmentId(user.getDepartmentId());
-
-        Department department = departmentRepository.findById(user.getDepartmentId()).get();
-        userDetailResponse.setDepartmentName(department.getDepartmentName());
+        setUserDetailResponseData(userDetailResponse, user, departmentRepository.findById(user.getDepartmentId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy Department")));
 
         List<UserCerti> userCertis = userCertiRepository.findByUserId(userId);
-        List<UserDetailResponse.CertificationDetail> userDetailResponseList = new ArrayList<>();
-
-        for (UserCerti userCerti : userCertis) {
-            UserDetailResponse.CertificationDetail certificationDetail = new UserDetailResponse.CertificationDetail();
-            certificationDetail.setCertificationId(userCerti.getCertification().getCertificationId());
-            certificationDetail.setCertificationName(userCerti.getCertification().getCertificationName());
-            certificationDetail.setStartDate(userCerti.getStartDate());
-            certificationDetail.setEndDate(userCerti.getEndDate());
-            certificationDetail.setScore(userCerti.getScore());
-            userDetailResponseList.add(certificationDetail);
-        }
+        List<UserDetailResponse.CertificationDetail> userDetailResponseList = userCertis.stream()
+                .map(this::mapUserCertiToDetail)
+                .collect(Collectors.toList());
+        
         userDetailResponse.setCertifications(userDetailResponseList);
         return userDetailResponse;
     }
@@ -201,54 +284,16 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public Long updateUser(FormRequest updateRequest) {
-        LocalDate birthDate = null;
-        if (updateRequest.getBirthDate() != null && !updateRequest.getBirthDate().isEmpty()) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT);
-            birthDate = LocalDate.parse(updateRequest.getBirthDate(), formatter);
-        }
-
         User user = userRepository.findById(updateRequest.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
-        user.setFullname(updateRequest.getFullname());
-        user.setBirthdate(birthDate);
-        user.setKatakana(updateRequest.getKatakana());
-        user.setEmail(updateRequest.getEmail());
-        user.setTelephone(updateRequest.getTelephone());
-
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-        }
-
-        user.setDepartmentId(updateRequest.getDepartmentId());
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy User"));
+        
+        setUserData(user, updateRequest);
+        setUserPassword(user, updateRequest.getPassword());
 
         final User savedUser = userRepository.save(user);
 
         if (updateRequest.getCertifications() != null && !updateRequest.getCertifications().isEmpty()) {
-
-            userCertiRepository.deleteByUserId(savedUser.getUserId());
-
-            List<UserCerti> userCertis = updateRequest.getCertifications().stream()
-                    .map(certRequest -> {
-                        Certification certification = certificationRepository.findById(certRequest.getCertificationId()).orElseThrow(() -> new NotFoundException("Certification not found"));
-
-                        UserCerti userCerti = new UserCerti();
-                        userCerti.setUserId(savedUser);
-                        userCerti.setCertification(certification);
-
-                        if (certRequest.getCertificationStartDate() != null && !certRequest.getCertificationStartDate().isEmpty()) {
-                            userCerti.setStartDate(LocalDate.parse(certRequest.getCertificationStartDate(), DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT)));
-                        }
-
-                        if (certRequest.getCertificationEndDate() != null && !certRequest.getCertificationEndDate().isEmpty()) {
-                            userCerti.setEndDate(LocalDate.parse(certRequest.getCertificationEndDate(), DateTimeFormatter.ofPattern(MessageConstant.DATE_FORMAT)));
-                        }
-
-                        userCerti.setScore(certRequest.getUserCertificationScore());
-                        return userCerti;
-                    })
-                    .collect(Collectors.toList());
-
-            userCertiRepository.saveAll(userCertis);
+            processCertificationsForUpdate(savedUser, updateRequest.getCertifications());
         }
         return savedUser.getUserId();
     }

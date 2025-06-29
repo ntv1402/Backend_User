@@ -23,4 +23,36 @@ public class Certification {
 
     @OneToMany(mappedBy = "certification", cascade = CascadeType.ALL)
     private List<UserCerti>  userCerti;
+
+    public Long getCertificationId() {
+        return certificationId;
+    }
+
+    public void setCertificationId(Long certificationId) {
+        this.certificationId = certificationId;
+    }
+
+    public String getCertificationName() {
+        return certificationName;
+    }
+
+    public void setCertificationName(String certificationName) {
+        this.certificationName = certificationName;
+    }
+
+    public Integer getCertificationLevel() {
+        return certificationLevel;
+    }
+
+    public void setCertificationLevel(Integer certificationLevel) {
+        this.certificationLevel = certificationLevel;
+    }
+
+    public List<UserCerti> getUserCerti() {
+        return userCerti;
+    }
+
+    public void setUserCerti(List<UserCerti> userCerti) {
+        this.userCerti = userCerti;
+    }
 }
