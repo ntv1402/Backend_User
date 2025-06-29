@@ -19,7 +19,9 @@ import com.training.backend.repository.UserCertiRepository;
 import com.training.backend.repository.UserRepository;
 import com.training.backend.service.UserService;
 import com.training.backend.utils.DateUtils;
+import com.training.backend.utils.ValidationUtils;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
@@ -34,8 +36,16 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.training.backend.config.MessageConstant.*;
+
+/**
+ * Implementation của UserService
+ */
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -54,13 +64,16 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ValidationUtils validationUtils;
+
     /**
      * Helper method để set dữ liệu cho UserCerti
      */
     private UserCerti setUserCertiData(User user, CertificationRequest certRequest) {
         // Tìm certification từ database
         Certification certification = certificationRepository.findById(certRequest.getCertificationId())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy Certification"));
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_CERTIFICATION));
         
         // Sử dụng Builder pattern để tạo UserCerti
         return UserCerti.builder()
@@ -73,16 +86,56 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * Helper method để validate dữ liệu user
+     * 
+     * @param request FormRequest chứa dữ liệu user
+     * @param isNewUser True nếu là thêm mới, false nếu là cập nhật
+     */
+    private void validateUserData(FormRequest request, boolean isNewUser) {
+        // Validate username
+        validationUtils.validateUsername(request.getUsername(), isNewUser);
+        
+        // Validate fullname
+        validationUtils.validateFullname(request.getFullname());
+        
+        // Validate katakana
+        validationUtils.validateKatakana(request.getKatakana());
+        
+        // Validate birthdate
+        validationUtils.validateBirthdate(request.getBirthDate());
+        
+        // Validate email
+        validationUtils.validateEmail(request.getEmail(), isNewUser, request.getUserId(), isNewUser);
+        
+        // Validate telephone
+        validationUtils.validateTelephone(request.getTelephone());
+        
+        // Validate password
+        validationUtils.validatePassword(request.getPassword(), isNewUser);
+        
+        // Validate department
+        validationUtils.validateDepartmentId(request.getDepartmentId(), true);
+        
+        // Validate certifications
+        validationUtils.validateCertifications(request.getCertifications(), true);
+    }
+
+    /**
      * Helper method để set dữ liệu cho User từ FormRequest
      */
     private void setUserData(User user, FormRequest request) {
-        user.setFullname(request.getFullname());
-        user.setBirthdate(DateUtils.parseDate(request.getBirthDate()));
-        user.setEmail(request.getEmail());
-        user.setTelephone(request.getTelephone());
-        user.setKatakana(request.getKatakana());
-        user.setUsername(request.getUsername());
-        user.setDepartmentId(request.getDepartmentId());
+        try {
+            user.setFullname(request.getFullname());
+            user.setBirthdate(DateUtils.parseDate(request.getBirthDate()));
+            user.setEmail(request.getEmail());
+            user.setTelephone(request.getTelephone());
+            user.setKatakana(request.getKatakana());
+            user.setUsername(request.getUsername());
+            user.setDepartmentId(request.getDepartmentId());
+        } catch (Exception e) {
+            log.error("Error setting user data: {}", e.getMessage());
+            throw new RuntimeException("Lỗi khi xử lý dữ liệu user", e);
+        }
     }
 
     /**
@@ -155,8 +208,63 @@ public class UserServiceImpl implements UserService {
         );
     }
 
+    /**
+     * Helper method để xử lý certifications cho user
+     * 
+     * @param user User cần xử lý certifications
+     * @param certifications Danh sách certification requests
+     * @param deleteExisting True nếu cần xóa certifications cũ (cho update), false nếu chỉ thêm mới (cho add)
+     */
+    private void processUserCertifications(User user, List<CertificationRequest> certifications, boolean deleteExisting) {
+        if (certifications != null && !certifications.isEmpty()) {
+            // Xóa certifications cũ nếu cần (cho update)
+            if (deleteExisting) {
+                userCertiRepository.deleteByUserId(user.getUserId());
+            }
+            
+            // Thêm certifications mới
+            List<UserCerti> userCertis = certifications.stream()
+                    .map(certRequest -> setUserCertiData(user, certRequest))
+                    .collect(Collectors.toList());
+            
+            userCertiRepository.saveAll(userCertis);
+        }
+    }
+
+    /**
+     * Helper method để validate tất cả order fields
+     * 
+     * @param userRequest UserRequest chứa các order fields
+     */
+    private void validateOrderFields(UserRequest userRequest) {
+        validationUtils.validateOrder(userRequest.getOrdFullname(), "orderByFullname");
+        validationUtils.validateOrder(userRequest.getOrdCertificationName(), "orderByCodeLevel");
+        validationUtils.validateOrder(userRequest.getOrdEndDate(), "orderByEndDate");
+    }
+
+    /**
+     * Helper method để validate pagination fields
+     * 
+     * @param userRequest UserRequest chứa limit và offset
+     */
+    private void validatePaginationFields(UserRequest userRequest) {
+        if (userRequest.getLimit() != null) {
+            validationUtils.validatePositiveInteger(userRequest.getLimit().toString(), "limit");
+        }
+        
+        if (userRequest.getOffset() != null) {
+            validationUtils.validatePositiveInteger(userRequest.getOffset().toString(), "offset");
+        }
+    }
+
     @Override
     public List<UserDTO> listUsers(UserRequest userRequest) {
+        // Validate order fields
+        validateOrderFields(userRequest);
+        
+        // Validate pagination fields
+        validatePaginationFields(userRequest);
+
         List<UserProjection> projections = getProjections(userRequest);
 
         List<UserDTO> users = projections.stream()
@@ -179,54 +287,50 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Override
     public Long addUser(FormRequest addRequest) {
-        try {
-            LocalDate birthDate = DateUtils.parseDate(addRequest.getBirthDate());
+        // Validate input data
+        validateUserData(addRequest, true);
+        
+        User user = new User();
+        setUserData(user, addRequest);
+        setUserPassword(user, addRequest.getPassword());
 
-            User user = new User();
+        User savedUser = userRepository.save(user);
 
-            setUserData(user, addRequest);
-            setUserPassword(user, addRequest.getPassword());
-
-            User savedUser = userRepository.save(user);
-
-            // Xử lý certifications
-            if (addRequest.getCertifications() != null) {
-                List<CertificationRequest> certificationRequests = addRequest.getCertifications();
-                for (CertificationRequest certRequest : certificationRequests) {
-                    UserCerti userCerti = setUserCertiData(savedUser, certRequest);
-                    userCertiRepository.save(userCerti);
-                }
-            }
-            return savedUser.getUserId();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+        // Xử lý certifications (thêm mới, không xóa cũ)
+        processUserCertifications(savedUser, addRequest.getCertifications(), false);
+        
+        return savedUser.getUserId();
     }
 
     @Override
     @Transactional
     public Long deleteUser(Long userId) {
-        try {
-            userCertiRepository.deleteByUserId(userId);
-            userRepository.deleteById(userId);
-            return userId;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        // Kiểm tra user có tồn tại không
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException(ER004_CODE, FIELD_ACCOUNT);
         }
+        
+        userCertiRepository.deleteByUserId(userId);
+        userRepository.deleteById(userId);
+        return userId;
     }
 
     @Override
     @Transactional
     public UserDetailResponse getUserById(Long userId) {
 
+        // Tìm user id
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy User"));
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
 
+        // Tạo object
         UserDetailResponse userDetailResponse = new UserDetailResponse();
-        setUserDetailResponseData(userDetailResponse, user, departmentRepository.findById(user.getDepartmentId())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy Department")));
 
+        // Tìm department
+        setUserDetailResponseData(userDetailResponse, user, departmentRepository.findById(user.getDepartmentId())
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_GROUP)));
+
+        // Certi
         List<UserCerti> userCertis = userCertiRepository.findByUserId(userId);
         List<UserDetailResponse.CertificationDetail> userDetailResponseList = userCertis.stream()
                 .map(this::mapUserCertiToDetail)
@@ -239,26 +343,20 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public Long updateUser(FormRequest updateRequest) {
+        // Validate input data
+        validateUserData(updateRequest, false);
+        
         User user = userRepository.findById(updateRequest.getUserId())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy User"));
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
         
         setUserData(user, updateRequest);
         setUserPassword(user, updateRequest.getPassword());
 
         final User savedUser = userRepository.save(user);
 
-        // Xử lý certifications khi update (xóa cũ, thêm mới)
-        if (updateRequest.getCertifications() != null && !updateRequest.getCertifications().isEmpty()) {
-            // Xóa certifications cũ
-            userCertiRepository.deleteByUserId(savedUser.getUserId());
-            
-            // Thêm certifications mới
-            List<UserCerti> userCertis = updateRequest.getCertifications().stream()
-                    .map(certRequest -> setUserCertiData(savedUser, certRequest))
-                    .collect(Collectors.toList());
-            
-            userCertiRepository.saveAll(userCertis);
-        }
+        // Xử lý certifications (xóa cũ + thêm mới)
+        processUserCertifications(savedUser, updateRequest.getCertifications(), true);
+        
         return savedUser.getUserId();
     }
 }

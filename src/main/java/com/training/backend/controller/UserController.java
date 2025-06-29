@@ -3,13 +3,11 @@ package com.training.backend.controller;
 import com.training.backend.dto.UserDTO;
 import com.training.backend.payload.request.FormRequest;
 import com.training.backend.payload.request.UserRequest;
-import com.training.backend.payload.response.ErrorResponse;
 import com.training.backend.payload.response.ListResponse;
 import com.training.backend.payload.response.SuccessResponse;
 import com.training.backend.payload.response.UserDetailResponse;
 import com.training.backend.service.impl.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +22,7 @@ import static com.training.backend.config.MessageConstant.*;
 public class UserController {
 
     @Autowired
-    UserServiceImpl  userService;
+    UserServiceImpl userService;
 
     @PostMapping("/list")
     public ListResponse listUser(
@@ -36,12 +34,15 @@ public class UserController {
             @RequestParam(value = "offset", required = false) Integer offset,
             @RequestParam(value = "limit", required = false) Integer limit) {
 
+        // Set default values
         if (limit == null) {
             limit = 5;
         }
         if (offset == null) {
             offset = 0;
         }
+
+        // Build UserRequest
         UserRequest userRequest = new UserRequest();
         userRequest.setFullname(fullname);
         userRequest.setDepartmentId(departmentId);
@@ -51,6 +52,7 @@ public class UserController {
         userRequest.setOffset(offset);
         userRequest.setLimit(limit);
 
+        // Get data from service
         Long totalRecords = userService.countUsers(userRequest);
         List<UserDTO> userDTOList;
         if (totalRecords > 0) {
@@ -58,71 +60,42 @@ public class UserController {
         } else {
             userDTOList = new ArrayList<>();
         }
+        
         return new ListResponse(API_SUCCESS, totalRecords, userDTOList);
     }
 
     @PostMapping
-    public ResponseEntity<?> addUser(@RequestBody FormRequest addRequest) {
-        // Validate ở đây
-
+    public ResponseEntity<SuccessResponse> addUser(@RequestBody FormRequest addRequest) {
+        // Service sẽ tự động validate và throw exception nếu có lỗi
         Long newUserId = userService.addUser(addRequest);
-
-        if (newUserId == null) {
-            // Trả về lỗi cho Frontend
-            ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-            errorResponse.addMessage(ER015_CODE, Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
 
         SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, newUserId);
         successResponse.addMessage(MSG001_CODE, Collections.emptyList());
-        return ResponseEntity.ok().body(successResponse);
+        return ResponseEntity.ok(successResponse);
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable Long userId) {
-        try {
-            UserDetailResponse response = userService.getUserById(userId);
-            return ResponseEntity.ok().body(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            ErrorResponse errorResponse = new ErrorResponse("500");
-            errorResponse.addMessage(ER015_CODE, Collections.emptyList());
-            return ResponseEntity.badRequest().body(errorResponse);
-        }
+    public ResponseEntity<UserDetailResponse> getUserById(@PathVariable Long userId) {
+        // Service sẽ tự động throw NotFoundException nếu không tìm thấy
+        UserDetailResponse response = userService.getUserById(userId);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{userId}")
-    public ResponseEntity<?> deleteUserById(@PathVariable Long userId) {
-        try {
+    public ResponseEntity<SuccessResponse> deleteUserById(@PathVariable Long userId) {
+        // Service sẽ tự động throw NotFoundException nếu không tìm thấy
+        Long deletedUserId = userService.deleteUser(userId);
 
-            Long deletedUserId = userService.deleteUser(userId);
-            if (deletedUserId != null) {
-                // Tạo response thành công với mã MSG003
-                SuccessResponse response = new SuccessResponse(API_SUCCESS, deletedUserId);
-                response.addMessage(MSG003_CODE, Collections.emptyList());
-                return ResponseEntity.ok(response);
-            } else {
-                // Tạo response lỗi với mã ER013 (không tìm thấy)
-                ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-                errorResponse.addMessage(ER013_CODE, Collections.singletonList(FIELD_EMPLOYEE_ID));
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-        } catch (Exception e) {
-            // Xử lý lỗi hệ thống
-            ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-            errorResponse.addMessage(ER015_CODE, Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+        SuccessResponse response = new SuccessResponse(API_SUCCESS, deletedUserId);
+        response.addMessage(MSG003_CODE, Collections.emptyList());
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping
-    public ResponseEntity<?> updateEmployee(@RequestBody FormRequest updateRequest) {
-        
-        // Nếu tất cả validation đều pass, tiến hành cập nhật nhân viên
+    public ResponseEntity<SuccessResponse> updateUser(@RequestBody FormRequest updateRequest) {
+        // Service sẽ tự động validate và throw exception nếu có lỗi
         Long updateUserId = userService.updateUser(updateRequest);
 
-        // Tạo response thành công với mã MSG002
         SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, updateUserId);
         successResponse.addMessage(MSG002_CODE, Collections.emptyList());
         return ResponseEntity.ok(successResponse);
