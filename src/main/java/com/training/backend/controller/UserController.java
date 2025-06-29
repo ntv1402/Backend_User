@@ -109,37 +109,7 @@ public class UserController {
 
     @PutMapping
     public ResponseEntity<?> updateEmployee(@RequestBody FormRequest updateRequest) {
-        // Kiểm tra employee có tồn tại không
-        if (!employeeValidator.isEmployeeExists(updateRequest.getEmployeeId())) {
-            ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-            errorResponse.addMessage(ER004_CODE, Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
-
-        // Kiểm tra trùng email
-        ErrorResponse emailError = employeeValidator.checkDuplicateEmployeeEmail(updateRequest.getEmployeeEmail(), updateRequest.getEmployeeId(), false);
-        if (emailError != null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(emailError);
-        }
-
-        // Kiểm tra department có tồn tại không
-        ErrorResponse deptError = employeeValidator.validateDepartmentExist(updateRequest.getDepartmentId());
-        if (deptError != null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(deptError);
-        }
-
-        // Kiểm tra certification có tồn tại không
-        ErrorResponse certError = employeeValidator.validateCertificationsExist(updateRequest.getCertifications());
-        if (certError != null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(certError);
-        }
-
-        // Validate toàn bộ request
-        ErrorResponse validationError = validateFormRequest(updateRequest);
-        if (validationError != null) {
-            return ResponseEntity.internalServerError().body(validationError);
-        }
-
+    
         // Nếu tất cả validation đều pass, tiến hành cập nhật nhân viên
         Long updateEmployeeId = employeeService.updateEmployee(updateRequest);
 
