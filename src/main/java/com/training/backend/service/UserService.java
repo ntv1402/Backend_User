@@ -15,15 +15,15 @@ import java.util.Optional;
 
 public interface UserService {
 
-    List<UserDTO> listUsers(UserRequest userRequest);
+    List<UserDTO> getListUsers(UserRequest userRequest);
 
     Long addUser(FormRequest addRequest);
 
-    UserDetailResponse getUserById (Long Id) throws Exception;
+    UserDetailResponse getUserById (Long Id);
 
     Long deleteUser(Long Id);
 
     Long updateUser(FormRequest updateRequest);
 
-    Long countUsers(UserRequest userRequest);
+    Long getCountUsers(UserRequest userRequest);
 }

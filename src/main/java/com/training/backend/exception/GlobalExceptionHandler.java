@@ -4,7 +4,7 @@
  */
 package com.training.backend.exception;
 
-import com.training.backend.config.MessageConstant;
+import com.training.backend.constant.MessageConstant;
 import com.training.backend.payload.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import static com.training.backend.config.MessageConstant.API_ERROR;
+import static com.training.backend.constant.MessageConstant.API_ERROR;
 
 /**
  * Global Exception Handler để xử lý các exception và trả về response phù hợp
@@ -87,23 +87,6 @@ public class GlobalExceptionHandler {
         errorResponse.addMessage(MessageConstant.ER004_CODE, ex.getParams());
         
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    /**
-     * Xử lý IllegalArgumentException
-     * Status: 400 Bad Request - Tham số không hợp lệ
-     * 
-     * @param ex IllegalArgumentException được throw
-     * @return ResponseEntity chứa ErrorResponse
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
-        log.warn("Illegal argument error: {}", ex.getMessage());
-        
-        ErrorResponse errorResponse = new ErrorResponse(API_ERROR);
-        errorResponse.addMessage(MessageConstant.ER018_CODE, null);
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.training.backend.service.impl;
 
-import com.training.backend.config.MessageConstant;
 import com.training.backend.dto.UserDTO;
 import com.training.backend.dto.UserProjection;
 import com.training.backend.entity.Certification;
@@ -11,7 +10,6 @@ import com.training.backend.exception.NotFoundException;
 import com.training.backend.payload.request.CertificationRequest;
 import com.training.backend.payload.request.FormRequest;
 import com.training.backend.payload.request.UserRequest;
-import com.training.backend.payload.response.ErrorResponse;
 import com.training.backend.payload.response.UserDetailResponse;
 import com.training.backend.repository.CertificationRepository;
 import com.training.backend.repository.DepartmentRepository;
@@ -21,51 +19,136 @@ import com.training.backend.service.UserService;
 import com.training.backend.utils.DateUtils;
 import com.training.backend.utils.ValidationUtils;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.crossstore.ChangeSetPersister;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.training.backend.config.MessageConstant.*;
+import static com.training.backend.constant.MessageConstant.*;
 
 /**
  * Implementation của UserService
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private DepartmentRepository departmentRepository;
+    private final DepartmentRepository departmentRepository;
 
-    @Autowired
-    private CertificationRepository certificationRepository;
+    private final CertificationRepository certificationRepository;
 
-    @Autowired
-    private UserCertiRepository userCertiRepository;
+    private final UserCertiRepository userCertiRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private ValidationUtils validationUtils;
+    private final ValidationUtils validationUtils;
+
+    @Override
+    public List<UserDTO> getListUsers(UserRequest userRequest) {
+        // Validate order fields
+        validateOrderFields(userRequest);
+
+        // Validate pagination fields
+        validatePaginationFields(userRequest);
+
+        List<UserProjection> projections = getProjections(userRequest);
+
+        List<UserDTO> users = projections.stream()
+                .map(this::mapProjectionToDTO)
+                .collect(Collectors.toList());
+        return users;
+    }
+
+    @Override
+    public Long getCountUsers(UserRequest userRequest) {
+        long totalRecords = userRepository.countUsers(
+                userRequest.getFullname(),
+                userRequest.getDepartmentId()
+        );
+        return totalRecords;
+    }
+
+    @Transactional
+    @Override
+    public Long addUser(FormRequest addRequest) {
+        // Validate input data
+        validateUserData(addRequest, true);
+
+        User user = new User();
+        setUserData(user, addRequest);
+        setUserPassword(user, addRequest.getPassword());
+
+        User savedUser = userRepository.save(user);
+
+        // Xử lý certifications (thêm mới, không xóa cũ)
+        processUserCertifications(savedUser, addRequest.getCertifications(), false);
+
+        return savedUser.getUserId();
+    }
+
+    @Override
+    @Transactional
+    public Long deleteUser(Long userId) {
+        // Kiểm tra user có tồn tại không
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException(ER004_CODE, FIELD_ACCOUNT);
+        }
+
+        userCertiRepository.deleteByUserId(userId);
+        userRepository.deleteById(userId);
+        return userId;
+    }
+
+    @Override
+    @Transactional
+    public UserDetailResponse getUserById(Long userId) {
+
+        // Tìm user id
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
+
+        // Tạo object
+        UserDetailResponse userDetailResponse = new UserDetailResponse();
+
+        // Tìm department
+        setUserDetailResponseData(userDetailResponse, user, departmentRepository.findById(user.getDepartmentId())
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_GROUP)));
+
+        // Certi
+        List<UserCerti> userCertis = userCertiRepository.findByUserId(userId);
+        List<UserDetailResponse.CertificationDetail> userDetailResponseList = userCertis.stream()
+                .map(this::mapUserCertiToDetail)
+                .collect(Collectors.toList());
+
+        userDetailResponse.setCertifications(userDetailResponseList);
+        return userDetailResponse;
+    }
+
+    @Override
+    @Transactional
+    public Long updateUser(FormRequest updateRequest) {
+        // Validate input data
+        validateUserData(updateRequest, false);
+
+        User user = userRepository.findById(updateRequest.getUserId())
+                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
+
+        setUserData(user, updateRequest);
+        setUserPassword(user, updateRequest.getPassword());
+
+        final User savedUser = userRepository.save(user);
+
+        // Xử lý certifications (xóa cũ + thêm mới)
+        processUserCertifications(savedUser, updateRequest.getCertifications(), true);
+
+        return savedUser.getUserId();
+    }
 
     /**
      * Helper method để set dữ liệu cho UserCerti
@@ -257,106 +340,5 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    @Override
-    public List<UserDTO> listUsers(UserRequest userRequest) {
-        // Validate order fields
-        validateOrderFields(userRequest);
-        
-        // Validate pagination fields
-        validatePaginationFields(userRequest);
 
-        List<UserProjection> projections = getProjections(userRequest);
-
-        List<UserDTO> users = projections.stream()
-                .map(this::mapProjectionToDTO)
-                .collect(Collectors.toList());
-        return users;
-    }
-
-    @Override
-    public Long countUsers(UserRequest userRequest) {
-        List<UserProjection> projections = getProjections(userRequest);
-
-        long totalRecords = userRepository.countUsers(
-                userRequest.getFullname(),
-                userRequest.getDepartmentId()
-        );
-        return totalRecords;
-    }
-
-    @Transactional
-    @Override
-    public Long addUser(FormRequest addRequest) {
-        // Validate input data
-        validateUserData(addRequest, true);
-        
-        User user = new User();
-        setUserData(user, addRequest);
-        setUserPassword(user, addRequest.getPassword());
-
-        User savedUser = userRepository.save(user);
-
-        // Xử lý certifications (thêm mới, không xóa cũ)
-        processUserCertifications(savedUser, addRequest.getCertifications(), false);
-        
-        return savedUser.getUserId();
-    }
-
-    @Override
-    @Transactional
-    public Long deleteUser(Long userId) {
-        // Kiểm tra user có tồn tại không
-        if (!userRepository.existsById(userId)) {
-            throw new NotFoundException(ER004_CODE, FIELD_ACCOUNT);
-        }
-        
-        userCertiRepository.deleteByUserId(userId);
-        userRepository.deleteById(userId);
-        return userId;
-    }
-
-    @Override
-    @Transactional
-    public UserDetailResponse getUserById(Long userId) {
-
-        // Tìm user id
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
-
-        // Tạo object
-        UserDetailResponse userDetailResponse = new UserDetailResponse();
-
-        // Tìm department
-        setUserDetailResponseData(userDetailResponse, user, departmentRepository.findById(user.getDepartmentId())
-                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_GROUP)));
-
-        // Certi
-        List<UserCerti> userCertis = userCertiRepository.findByUserId(userId);
-        List<UserDetailResponse.CertificationDetail> userDetailResponseList = userCertis.stream()
-                .map(this::mapUserCertiToDetail)
-                .collect(Collectors.toList());
-        
-        userDetailResponse.setCertifications(userDetailResponseList);
-        return userDetailResponse;
-    }
-
-    @Override
-    @Transactional
-    public Long updateUser(FormRequest updateRequest) {
-        // Validate input data
-        validateUserData(updateRequest, false);
-        
-        User user = userRepository.findById(updateRequest.getUserId())
-                .orElseThrow(() -> new NotFoundException(ER004_CODE, FIELD_ACCOUNT));
-        
-        setUserData(user, updateRequest);
-        setUserPassword(user, updateRequest.getPassword());
-
-        final User savedUser = userRepository.save(user);
-
-        // Xử lý certifications (xóa cũ + thêm mới)
-        processUserCertifications(savedUser, updateRequest.getCertifications(), true);
-        
-        return savedUser.getUserId();
-    }
 }

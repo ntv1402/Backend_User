@@ -4,7 +4,6 @@
  */
 package com.training.backend.utils;
 
-import com.training.backend.config.MessageConstant;
 import com.training.backend.exception.ValidationException;
 import com.training.backend.exception.DuplicateException;
 import com.training.backend.exception.BusinessLogicException;
@@ -22,12 +21,12 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static com.training.backend.config.MessageConstant.*;
+import static com.training.backend.constant.MessageConstant.*;
 
 /**
- * Utility class cung cấp các phương thức kiểm tra tính hợp lệ của dữ liệu đầu vào
- * Tổ chức theo từng field để dễ maintain và sử dụng
- * Sử dụng ValidationException thay vì trả về ErrorResponse
+ * Kiểm tra dữ liệu đầu vào
+ * Thay đổi: gom theo từng field
+ * Thay đổi: dùng Error Response -> Exception
  */
 @Component
 public class ValidationUtils {
@@ -52,14 +51,16 @@ public class ValidationUtils {
      * @throws DuplicateException nếu có lỗi trùng lặp
      */
     public void validateUsername(String username, boolean checkDuplicate) {
-        // Validate format
+        // null/rỗng
         if (username == null || username.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_ACCOUNT);
         }
+        // max length 50
         if (username.length() > 50) {
             throw new ValidationException(ER006_CODE, FIELD_ACCOUNT);
         }
-        if (!Pattern.matches("^[a-zA-Z0-9_]+$", username)) {
+        // regex
+        if (!Pattern.matches(ACCOUNT_FORMAT, username)) {
             throw new ValidationException(ER019_CODE, FIELD_ACCOUNT);
         }
         
@@ -78,9 +79,11 @@ public class ValidationUtils {
      * @throws ValidationException nếu có lỗi validation
      */
     public void validateFullname(String fullname) {
+        // check null
         if (fullname == null || fullname.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_NAME);
         }
+        // max length
         if (fullname.length() > 125) {
             throw new ValidationException(ER006_CODE, FIELD_NAME);
         }
@@ -95,12 +98,15 @@ public class ValidationUtils {
      * @throws ValidationException nếu có lỗi validation
      */
     public void validateKatakana(String katakana) {
+        // check null
         if (katakana == null || katakana.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_KANA_NAME);
         }
+        // max length
         if (katakana.length() > 125) {
             throw new ValidationException(ER006_CODE, FIELD_KANA_NAME);
         }
+        // check pattern
         if (!Pattern.matches("^[\\uFF65-\\uFF9F\\s]+$", katakana)) {
             throw new ValidationException(ER009_CODE, FIELD_KANA_NAME);
         }
@@ -115,14 +121,17 @@ public class ValidationUtils {
      * @throws ValidationException nếu có lỗi validation
      */
     public void validateBirthdate(String birthdate) {
+        // check null
         if (birthdate == null || birthdate.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_BIRTH_DATE);
         }
+        // bẵt lỗi khi parse
         try {
             LocalDate.parse(birthdate, DateTimeFormatter.ofPattern(DATE_FORMAT));
         } catch (DateTimeParseException e) {
             throw new ValidationException(ER011_CODE, FIELD_BIRTH_DATE);
         }
+        // check pattern
         if (!Pattern.matches("^\\d{4}/\\d{2}/\\d{2}$", birthdate)) {
             throw new ValidationException(ER005_CODE, FIELD_BIRTH_DATE, DATE_FORMAT);
         }
@@ -141,19 +150,20 @@ public class ValidationUtils {
      * @throws DuplicateException nếu có lỗi trùng lặp
      */
     public void validateEmail(String email, boolean checkDuplicate, Long userId, boolean isNewUser) {
-        // Validate format
+        // check null
         if (email == null || email.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_EMAIL);
         }
+        // max length
         if (email.length() > 125) {
             throw new ValidationException(ER006_CODE, FIELD_EMAIL);
         }
-        // Kiểm tra format email cơ bản
+        // check pattern
         if (!Pattern.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", email)) {
             throw new ValidationException(ER020_CODE, FIELD_EMAIL);
         }
         
-        // Check duplicate nếu cần
+        // check duplicate nếu cần
         if (checkDuplicate) {
             boolean isDuplicate = isNewUser
                     ? userRepository.existsByEmail(email)
@@ -174,12 +184,15 @@ public class ValidationUtils {
      * @throws ValidationException nếu có lỗi validation
      */
     public void validateTelephone(String telephone) {
+        // check null
         if (telephone == null || telephone.isEmpty()) {
             throw new ValidationException(ER001_CODE, FIELD_PHONE);
         }
+        // max length
         if (telephone.length() > 50) {
             throw new ValidationException(ER006_CODE, FIELD_PHONE);
         }
+        // check pattern
         if (!Pattern.matches("^[\\x01-\\x7E]+$", telephone)) {
             throw new ValidationException(ER008_CODE, FIELD_PHONE);
         }
@@ -195,12 +208,17 @@ public class ValidationUtils {
      * @throws ValidationException nếu có lỗi validation
      */
     public void validatePassword(String password, boolean isNewUser) {
+        // Nếu là tạo mới thì password không được null hoặc rỗng
         if (isNewUser && (password == null || password.isEmpty())) {
             throw new ValidationException(ER001_CODE, FIELD_PASSWORD);
         }
+
+        // Nếu là cập nhật mà không nhập password thì bỏ qua
         if (!isNewUser && (password == null || password.isEmpty())) {
-            return; // Bỏ qua validate khi cập nhật không nhập password
+            return;
         }
+
+        // Nếu có password thì kiểm tra độ dài
         if (password.length() > 50 || password.length() < 8) {
             throw new ValidationException(ER007_CODE, FIELD_PASSWORD, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH);
         }
@@ -354,7 +372,7 @@ public class ValidationUtils {
             // Validate score
             validateCertificationScore(cert.getUserCertificationScore());
 
-            // Validate date logic
+            // Validate start date < end date
             validateCertificationDateLogic(
                     cert.getCertificationStartDate(), 
                     cert.getCertificationEndDate()
@@ -401,7 +419,12 @@ public class ValidationUtils {
     public void validatePositiveInteger(String number, String param) {
         try {
             int limitParse = Integer.parseInt(number);
-            if (limitParse < 0) {
+            // Offset có thể = 0
+            if ("offset".equals(param) && limitParse < 0) {
+                throw new NumberFormatException();
+            }
+            // Limit không thể = 0
+            if ("limit".equals(param) && limitParse < 1) {
                 throw new NumberFormatException();
             }
         } catch (NumberFormatException e) {

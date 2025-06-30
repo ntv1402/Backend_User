@@ -1,6 +1,6 @@
 package com.training.backend.utils;
 
-import com.training.backend.config.MessageConstant;
+import com.training.backend.constant.MessageConstant;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

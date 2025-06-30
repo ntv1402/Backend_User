@@ -1,4 +1,4 @@
-package com.training.backend.config;
+package com.training.backend.constant;
 
 /**
  * Class chứa các hằng số liên quan đến mã lỗi và thông báo
@@ -48,21 +48,21 @@ public class MessageConstant {
 
     // Field names in Japanese
     public static final String FIELD_EMPLOYEE_ID = "ID";
-    public static final String FIELD_ACCOUNT = "アカウント名";
-    public static final String FIELD_NAME = "氏名";
-    public static final String FIELD_KANA_NAME = "カタカナ氏名";
-    public static final String FIELD_BIRTH_DATE = "生年月日";
-    public static final String FIELD_EMAIL = "メールアドレス";
-    public static final String FIELD_PHONE = "電話番号";
-    public static final String FIELD_PASSWORD = "パスワード";
-    public static final String FIELD_GROUP = "グループ";
-    public static final String FIELD_CERTIFICATION = "資格";
-    public static final String FIELD_CERTIFICATION_START_DATE = "資格交付日";
-    public static final String FIELD_CERTIFICATION_END_DATE = "失効日";
-    public static final String FIELD_SCORE = "点数";
+    public static final String FIELD_ACCOUNT = "Username";
+    public static final String FIELD_NAME = "Fullname";
+    public static final String FIELD_KANA_NAME = "KanaName";
+    public static final String FIELD_BIRTH_DATE = "Birthdate";
+    public static final String FIELD_EMAIL = "Email";
+    public static final String FIELD_PHONE = "Telephone";
+    public static final String FIELD_PASSWORD = "Password";
+    public static final String FIELD_GROUP = "Department";
+    public static final String FIELD_CERTIFICATION = "Certificate";
+    public static final String FIELD_CERTIFICATION_START_DATE = "Startdate";
+    public static final String FIELD_CERTIFICATION_END_DATE = "Enddate";
+    public static final String FIELD_SCORE = "Score";
 
-    public static final String FIELD_OFFSET =  "オフセット";
-    public static final String FIELD_LIMIT = "リミット";
+    public static final String FIELD_OFFSET =  "Offset";
+    public static final String FIELD_LIMIT = "Limit";
 
     // Format patterns
     public static final String DATE_FORMAT = "yyyy/MM/dd";
@@ -70,10 +70,13 @@ public class MessageConstant {
     public static final String PASSWORD_MIN_LENGTH = "8";
     public static final String PASSWORD_MAX_LENGTH = "50";
 
-    // Success messages in Japanese
-    public static final String MSG001_JP = "ユーザの登録が完了しました。";
-    public static final String MSG002_JP = "ユーザの更新が完了しました。";
-    public static final String MSG003_JP = "ユーザの削除が完了しました。";
-    public static final String MSG004_JP = "削除するユーザが、よろしいでしょうか。";
-    public static final String MSG005_JP = "検索条件に該当するユーザが見つかりません。";
+    public static final String REQUEST_FULL_NAME = "fullname";
+    public static final String REQUEST_DEPARTMENT = "departmentId";
+    public static final String REQUEST_ORD_FULLNAME = "ordFullname";
+    public static final String REQUEST_ORD_CERTIFICATE = "ordCertificationName";
+    public static final String REQUEST_ORD_CERTIFICATION_DATE = "ordEndDate";
+    public static final String REQUEST_OFFSET = "offset";
+    public static final String REQUEST_LIMIT = "limit";
+
+
 }

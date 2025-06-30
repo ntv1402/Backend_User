@@ -57,12 +57,12 @@ public class AuthController {
     }
 
 
-    @GetMapping("/test-auth")
-    public ResponseEntity<String> testToken(Authentication authentication) {
-        if (authentication != null && authentication.isAuthenticated()) {
-            return ResponseEntity.ok("Token OK - User: " + authentication.getName());
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token missing or invalid");
-    }
+//    @GetMapping("/test-auth")
+//    public ResponseEntity<String> testToken(Authentication authentication) {
+//        if (authentication != null && authentication.isAuthenticated()) {
+//            return ResponseEntity.ok("Token OK - User: " + authentication.getName());
+//        }
+//        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token missing or invalid");
+//    }
 
 }

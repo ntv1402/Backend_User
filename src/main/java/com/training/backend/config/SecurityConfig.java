@@ -3,6 +3,7 @@ package com.training.backend.config;
 import com.training.backend.config.jwt.AuthEntryPoint;
 import com.training.backend.config.jwt.JwtFilter;
 import com.training.backend.config.jwt.JwtUtils;
+import com.training.backend.constant.Constants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;

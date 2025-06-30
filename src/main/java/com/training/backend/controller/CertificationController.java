@@ -1,8 +1,7 @@
 package com.training.backend.controller;
 
-import com.training.backend.config.MessageConstant;
+import com.training.backend.constant.MessageConstant;
 import com.training.backend.dto.CertificationDTO;
-import com.training.backend.entity.Certification;
 import com.training.backend.payload.response.CertificationResponse;
 import com.training.backend.payload.response.ErrorResponse;
 import com.training.backend.service.CertificationService;
