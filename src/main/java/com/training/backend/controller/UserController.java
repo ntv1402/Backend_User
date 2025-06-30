@@ -66,7 +66,6 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<SuccessResponse> addUser(@RequestBody FormRequest addRequest) {
-        // Service sẽ tự động validate và throw exception nếu có lỗi
         Long newUserId = userService.addUser(addRequest);
 
         SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, newUserId);
@@ -76,14 +75,12 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<UserDetailResponse> getUserById(@PathVariable Long userId) {
-        // Service sẽ tự động throw NotFoundException nếu không tìm thấy
         UserDetailResponse response = userService.getUserById(userId);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<SuccessResponse> deleteUserById(@PathVariable Long userId) {
-        // Service sẽ tự động throw NotFoundException nếu không tìm thấy
         Long deletedUserId = userService.deleteUser(userId);
 
         SuccessResponse response = new SuccessResponse(API_SUCCESS, deletedUserId);
@@ -93,7 +90,6 @@ public class UserController {
 
     @PutMapping
     public ResponseEntity<SuccessResponse> updateUser(@RequestBody FormRequest updateRequest) {
-        // Service sẽ tự động validate và throw exception nếu có lỗi
         Long updateUserId = userService.updateUser(updateRequest);
 
         SuccessResponse successResponse = new SuccessResponse(API_SUCCESS, updateUserId);
